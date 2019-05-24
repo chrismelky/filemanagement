@@ -9,6 +9,7 @@ import com.softalanta.batchlay.repository.FileResourceRepository;
 import com.softalanta.batchlay.repository.UserRepository;
 import com.softalanta.batchlay.service.JCloudService;
 import com.softalanta.batchlay.service.ReportExportService;
+import com.softalanta.batchlay.utils.MultipartFileByteSource;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperReport;
@@ -42,8 +43,7 @@ public class UserController {
     private final
     JobLauncher jobLauncher;
 
-    private final
-    Job job;
+    private final Job userUploadJob;
 
     private final
     UserRepository userRepository;
@@ -58,9 +58,9 @@ public class UserController {
     ReportExportService reportExportService;
 
     @Autowired
-    public UserController(JobLauncher jobLauncher, Job job, UserRepository userRepository, JCloudService jCloudService, FileResourceRepository fileResourceRepository, ReportExportService reportExportService) {
+    public UserController(JobLauncher jobLauncher, Job userCsvUploadJob, UserRepository userRepository, JCloudService jCloudService, FileResourceRepository fileResourceRepository, ReportExportService reportExportService) {
         this.jobLauncher = jobLauncher;
-        this.job = job;
+        this.userUploadJob = userCsvUploadJob;
         this.userRepository = userRepository;
         this.jCloudService = jCloudService;
         this.fileResourceRepository = fileResourceRepository;
@@ -145,7 +145,7 @@ public class UserController {
         File tmpFile = Files.createTempFile("fileApp",".tmp").toFile();
         file.transferTo(tmpFile);
 
-        JobExecution jobExecution = jobLauncher.run(job, new JobParametersBuilder()
+        JobExecution jobExecution = jobLauncher.run(userUploadJob, new JobParametersBuilder()
                 .addString("filePath", tmpFile.getAbsolutePath())
                 .addLong("time", System.currentTimeMillis())
                 .toJobParameters());
@@ -167,32 +167,5 @@ public class UserController {
     public List<User> get(){
         return userRepository.findAll();
     }
-
-    private class MultipartFileByteSource
-            extends ByteSource
-    {
-        private MultipartFile file;
-
-        public MultipartFileByteSource( MultipartFile file )
-        {
-            this.file = file;
-        }
-
-        @Override
-        public InputStream openStream() throws IOException
-        {
-            try
-            {
-                return file.getInputStream();
-            }
-            catch ( IOException ioe )
-            {
-                return null;
-            }
-        }
-    }
-
-
-
 
 }

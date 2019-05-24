@@ -1,9 +1,8 @@
-package com.softalanta.batchlay.config;
+package com.softalanta.batchlay.batch;
 
 import com.softalanta.batchlay.domain.User;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -22,21 +21,19 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 
 @Configuration
-@EnableBatchProcessing
-public class BatchConfig {
+public class UserUploadConfig {
 
     @Bean
-    public Job job(JobBuilderFactory jobBuilderFactory,
-                   StepBuilderFactory stepBuilderFactory,
-                   ItemReader<User> itemReader,
-                   ItemProcessor<User, User> itemProcessor,
-                   ItemWriter<User> itemWriter){
+    public Job userCsvUploadJob(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory,
+                             ItemReader<User> userCsvFileReader,
+                             ItemProcessor<User, User> userUploadProcessor,
+                             ItemWriter<User> userUploadWriter){
 
         Step step = stepBuilderFactory.get("ETL-file-load")
                 .<User, User>chunk(100)
-                .reader(itemReader)
-                .processor(itemProcessor)
-                .writer(itemWriter)
+                .reader(userCsvFileReader)
+                .processor(userUploadProcessor)
+                .writer(userUploadWriter)
                 .build();
         return jobBuilderFactory.get("ETL-load")
                 .incrementer(new RunIdIncrementer())
@@ -47,23 +44,22 @@ public class BatchConfig {
 
     @Bean
     @StepScope
-    public FlatFileItemReader<User> itemReader(@Value("#{jobParameters[filePath]}") String path){
+    public FlatFileItemReader<User> userCsvFileReader(@Value("#{jobParameters[filePath]}") String path){
         FlatFileItemReader<User> flatFileItemReader = new FlatFileItemReader<>();
         flatFileItemReader.setResource(new FileSystemResource(path));
         flatFileItemReader.setName("CSV-reader");
         flatFileItemReader.setLinesToSkip(1);
-        flatFileItemReader.setLineMapper(lineMapper());
+        flatFileItemReader.setLineMapper(userCsvLineMapper());
 
         return  flatFileItemReader;
     }
-
     @Bean
-    public LineMapper<User> lineMapper(){
+    public LineMapper<User> userCsvLineMapper(){
         DefaultLineMapper<User> defaultLineMapper = new DefaultLineMapper<>();
         DelimitedLineTokenizer delimitedLineTokenizer = new DelimitedLineTokenizer();
         delimitedLineTokenizer.setDelimiter(",");
         delimitedLineTokenizer.setStrict(false);
-        delimitedLineTokenizer.setNames(new String[]{"id","name", "dept", "salary"});
+        delimitedLineTokenizer.setNames("id","name", "dept", "salary");
 
         BeanWrapperFieldSetMapper<User> fieldSetMapper = new BeanWrapperFieldSetMapper<>();
         fieldSetMapper.setTargetType(User.class);
